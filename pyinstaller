@@ -1,0 +1,2 @@
+pyinstaller --noconsole --onefile --add-data "zh_CN.lang:." --add-data "en_US.lang:." main.py
+pyinstaller main.spec
