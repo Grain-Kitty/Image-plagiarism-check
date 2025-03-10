@@ -13,5 +13,5 @@ This is an image plagiarism detection tool implemented with multiple hash algori
 - **Average Hash (AHash)**
 
 ---
-**更新日期**: 2025年03月10日 星期一
+- **更新日期**: 2025年03月10日 星期一
 - **Update Date**: March 10, 2025, Monday
