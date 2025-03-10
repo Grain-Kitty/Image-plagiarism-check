@@ -1,3 +1,16 @@
-Image-plagiarism-check
-这是一个基于PHash DHash WHash AHash的哈希算法写的图像查重软件
-This is an image plagiarism checking software written based on the PHash DHash WHash AHash hash algorithm
+# 🔍 Image Plagiarism Checker
+
+这是一款基于哈希算法的图像查重工具，支持以下四种算法：
+- **感知哈希 (PHash)**
+- **差异哈希 (DHash)**
+- **小波哈希 (WHash)**
+- **平均哈希 (AHash)**
+
+This is an image plagiarism detection tool implemented with multiple hash algorithms:
+- **Perceptual Hash (PHash)**
+- **Difference Hash (DHash)**
+- **Wavelet Hash (WHash)**
+- **Average Hash (AHash)**
+
+---
+**更新日期**: 2025年03月10日 星期一
