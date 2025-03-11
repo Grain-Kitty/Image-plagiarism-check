@@ -3,12 +3,10 @@ from tkinter import ttk, filedialog, messagebox, Canvas, Toplevel
 from PIL import Image, ImageTk
 from collections import OrderedDict
 import time
-from concurrent.futures import ThreadPoolExecutor
 import sys
 import os
 import threading
 
-# 语言文件字典
 LANGUAGES = {
     "zh_CN": "zh_CN.lang",
     "en_US": "en_US.lang"
@@ -16,18 +14,14 @@ LANGUAGES = {
 CURRENT_LANGUAGE = "zh_CN"
 
 def resource_path(relative_path):
-    """ 获取资源文件的绝对路径 """
     if hasattr(sys, '_MEIPASS'):
-        # 打包后运行
         return os.path.join(sys._MEIPASS, relative_path)
-    # 开发环境运行
     return os.path.join(os.path.abspath("."), relative_path)
 
 def load_language(lang):
     lang_dict = {}
     lang_file = LANGUAGES.get(lang)
     if lang_file:
-        # 获取语言文件的实际路径
         lang_file_path = resource_path(lang_file)
         if os.path.exists(lang_file_path):
             with open(lang_file_path, "r", encoding="utf-8") as f:
@@ -47,61 +41,62 @@ class ImageDeduplicatorUI:
         self.root.minsize(800, 600)
 
         self.style = ttk.Style()
-        self.style.theme_use("default")
-        self.style.configure("TButton", padding=6)
+        self.style.theme_use("clam")
+        self.style.configure("TButton", padding=6, font=('Helvetica', 10), background="#4CAF50", foreground="white")
         self.style.configure("TFrame", background="#f0f0f0")
-        self.style.configure("TLabel", background="#f0f0f0")
+        self.style.configure("TLabel", background="#f0f0f0", font=('Helvetica', 10))
         self.style.configure("TLabelframe", background="#f0f0f0")
-        self.style.configure("TLabelframe.Label", background="#f0f0f0")
+        self.style.configure("TLabelframe.Label", background="#f0f0f0", font=('Helvetica', 10))
 
         self.image_cache = OrderedDict()
         self.MAX_CACHE_SIZE = 100
         self.hash_calculator = hash_calculator
         self.duplicate_analyzer = duplicate_analyzer
+        self.scroll_update_scheduled = False 
+        self.scroll_delta = 0
 
         self.create_main_layout()
         self._update_check_button_state()
 
     def create_main_layout(self):
-        # 顶部框架，包含语言切换按钮和操作按钮
-        top_frame = ttk.Frame(self.root, padding=10)
+        top_frame = ttk.Frame(self.root, padding=(10, 5))
         top_frame.pack(fill=tk.X, side=tk.TOP)
 
         self.create_language_switcher(top_frame)
         self.create_action_buttons(top_frame)
 
-        # 中间框架，包含进度条和日志显示
-        middle_frame = ttk.Frame(self.root, padding=10)
+        middle_frame = ttk.Frame(self.root, padding=(10, 5))
         middle_frame.pack(fill=tk.X, side=tk.TOP)
 
         self.create_progress_bar(middle_frame)
         self.create_log_display(middle_frame)
 
-        # 底部框架，包含结果显示区域
-        bottom_frame = ttk.Frame(self.root, padding=10)
+        bottom_frame = ttk.Frame(self.root, padding=(10, 5))
         bottom_frame.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
 
         self.create_result_display(bottom_frame)
 
     def create_language_switcher(self, parent):
         lang_frame = ttk.Frame(parent)
-        lang_frame.pack(side=tk.RIGHT)
+        lang_frame.pack(side=tk.RIGHT, padx=5)
 
         self.lang_btn = ttk.Button(
             lang_frame,
             text="Switch to English" if CURRENT_LANGUAGE == "zh_CN" else "切换到中文",
-            command=self.switch_language
+            command=self.switch_language,
+            style="TButton"
         )
-        self.lang_btn.pack(side=tk.RIGHT, padx=5)
+        self.lang_btn.pack(side=tk.RIGHT)
 
     def create_action_buttons(self, parent):
         button_frame = ttk.Frame(parent)
-        button_frame.pack(side=tk.LEFT)
+        button_frame.pack(side=tk.LEFT, padx=5)
 
         self.select_btn = ttk.Button(
             button_frame,
             text=self._get_lang_text("SELECT_BTN_TEXT", "Default select folder button text"),
-            command=self.start_hash_calculation
+            command=self.start_hash_calculation,
+            style="TButton"
         )
         self.select_btn.pack(side=tk.LEFT, padx=5)
 
@@ -109,7 +104,8 @@ class ImageDeduplicatorUI:
             button_frame,
             text=self._get_lang_text("CHECK_BTN_TEXT", "Default check hashes button text"),
             command=self.start_check_duplicate_hashes,
-            state=tk.DISABLED
+            state=tk.DISABLED,
+            style="TButton"
         )
         self.check_btn.pack(side=tk.LEFT, padx=5)
 
@@ -120,15 +116,16 @@ class ImageDeduplicatorUI:
         self.progress_bar = ttk.Progressbar(
             progress_frame,
             orient=tk.HORIZONTAL,
-            mode='determinate'
+            mode='determinate',
+            style="Horizontal.TProgressbar"
         )
         self.progress_bar.pack(fill=tk.X, expand=True, padx=5)
 
     def create_log_display(self, parent):
         log_frame = ttk.Frame(parent)
-        log_frame.pack(fill=tk.X, pady=5)
+        log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
 
-        self.log_text = tk.Text(log_frame, wrap=tk.WORD, height=5)
+        self.log_text = tk.Text(log_frame, wrap=tk.WORD, height=5, font=('Helvetica', 10))
         self.log_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
     def create_result_display(self, parent):
@@ -141,7 +138,8 @@ class ImageDeduplicatorUI:
         h_scrollbar = ttk.Scrollbar(result_frame, orient=tk.HORIZONTAL)
         h_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.canvas = Canvas(result_frame, yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+        self.canvas = Canvas(result_frame, yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set, 
+                             bd=0, highlightthickness=0, bg="white")
         self.result_frame = ttk.Frame(self.canvas)
         self.canvas.create_window((0, 0), window=self.result_frame, anchor=tk.NW)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -155,10 +153,11 @@ class ImageDeduplicatorUI:
     def start_hash_calculation(self):
         folder_path = filedialog.askdirectory()
         if folder_path:
+            self.log(self._get_lang_text("LOG_START_HASH_CALCULATION", "Start calculating hashes, folder path: {0}").format(folder_path))
             if self.hash_calculator.has_existing_hashes():
                 result = messagebox.askyesno(
                     self._get_lang_text("MSG_COMPLETE", "Default completion message"),
-                    self._get_lang_text("MSG_REGENERATE_HASH", "Default recalculate message")
+                    self._get_lang_text("MSG_REGENERATE_HASH", "The hash value file already exists. Do you want to recalculate it?")
                 )
                 if result:
                     self._toggle_buttons(False)
@@ -179,11 +178,13 @@ class ImageDeduplicatorUI:
                     daemon=True
                 ).start()
         else:
-            self.log(self._get_lang_text("LOG_NO_FOLDER_SELECTED", "Default no folder selected message"))
+            self.log(self._get_lang_text("LOG_NO_FOLDER_SELECTED", "Oops! You haven't selected a folder yet😔."))
 
     def start_check_duplicate_hashes(self):
+        self.log(self._get_lang_text("LOG_START_CHECK_DUPLICATE", "Start checking duplicate hashes"))
         if not self.hash_calculator.has_existing_hashes():
-            messagebox.showerror("😣Error😣", self._get_lang_text("MSG_CHECK_NEEDED", "Default need to calculate hashes message"))
+            messagebox.showerror(self._get_lang_text("ERROR_TITLE", "Error"), self._get_lang_text("MSG_CHECK_NEEDED", "You need to calculate the hash values first!"))
+            self.log(self._get_lang_text("LOG_CHECK_DUPLICATE_FAILED", "Check duplicate hashes failed: Need to calculate hashes first"))
             return
         self._toggle_buttons(False)
         threading.Thread(
@@ -196,23 +197,24 @@ class ImageDeduplicatorUI:
         self.root.after(0, lambda: [
             self._toggle_buttons(True),
             self.progress_bar.config(value=0),
-            messagebox.showinfo(self._get_lang_text("MSG_COMPLETE", "Default completion message"),
-                                f"Results have been saved to {self.hash_calculator.result_file_path}!"),
+            messagebox.showinfo(self._get_lang_text("MSG_COMPLETE", "Completed"), self._get_lang_text("MSG_RESULTS_SAVED", "Results have been saved to {0}!").format(self.hash_calculator.result_file_path)),
             self.check_btn.config(state=tk.NORMAL),
             self.start_check_duplicate_hashes()
         ])
+        self.log(self._get_lang_text("LOG_HASH_CALCULATION_COMPLETE", "Hash calculation complete"))
 
     def _on_duplicate_check_complete(self, duplicate_groups, suspicious_groups, all_image_hashes):
         self.root.after(0, lambda: [
             self.clear_result_frame(),
             self._toggle_buttons(True)
         ])
+        self.log(self._get_lang_text("LOG_CHECK_DUPLICATE_COMPLETE", "Duplicate hash check complete"))
         if duplicate_groups or suspicious_groups:
             self.root.after(0, lambda: self.show_duplicates(duplicate_groups, suspicious_groups, all_image_hashes))
         else:
             self.root.after(0, lambda: messagebox.showinfo(
-                self._get_lang_text("MSG_NO_DUPLICATES", "Default no duplicates message"),
-                "No duplicate or suspicious duplicate images found."
+                self._get_lang_text("MSG_NO_DUPLICATES", "No duplicate or suspicious duplicate images found."),
+                self._get_lang_text("MSG_NO_DUPLICATES", "No duplicate or suspicious duplicate images found.")
             ))
 
     def show_duplicates(self, duplicate_groups, suspicious_groups, all_image_hashes):
@@ -267,7 +269,7 @@ class ImageDeduplicatorUI:
             check_vars[img_path] = tk.IntVar(value=0)
             cb = ttk.Checkbutton(
                 img_frame,
-                text=self._get_lang_text("BTN_DELETE_IMAGE", "Delete it🗑️"),
+                text=self._get_lang_text("BTN_DELETE_IMAGE", "Delete it"),
                 variable=check_vars[img_path]
             )
             cb.pack()
@@ -311,17 +313,17 @@ class ImageDeduplicatorUI:
                 try:
                     os.remove(path)
                     deleted_files.append(path)
-                    self.log(self._get_lang_text("LOG_DELETE_SUCCESS", "Default delete success message").format(path))
+                    self.log(self._get_lang_text("LOG_DELETE_SUCCESS", "Successfully deleted image: {0}").format(path))
                 except Exception as e:
                     failed_files.append(path)
-                    self.log(self._get_lang_text("LOG_DELETE_FAILED", "Default delete failed message").format(path, str(e)))
+                    self.log(self._get_lang_text("LOG_DELETE_FAILED", "Failed to delete image: {0}, Error: {1}").format(path, str(e)))
         if deleted_files:
             deleted_msg = ", ".join(deleted_files)
-            self.log(f"👏Successfully deleted these images: {deleted_msg}")
+            self.log(self._get_lang_text("LOG_DELETE_SUCCESS", "Successfully deleted these images: {0}").format(deleted_msg))
         if failed_files:
             failed_msg = ", ".join(failed_files)
-            self.log(f"😔Failed to delete these images: {failed_msg}")
-        messagebox.showinfo(self._get_lang_text("MSG_DELETE_COMPLETE", "Default delete operation completed message"), "Operation completed!")
+            self.log(self._get_lang_text("LOG_DELETE_FAILED", "Failed to delete these images: {0}").format(failed_msg))
+        messagebox.showinfo(self._get_lang_text("MSG_DELETE_COMPLETE", "Operation completed!"), self._get_lang_text("MSG_DELETE_COMPLETE", "Operation completed!"))
 
     def _toggle_buttons(self, state):
         state = tk.NORMAL if state else tk.DISABLED
@@ -344,7 +346,16 @@ class ImageDeduplicatorUI:
 
     def _on_mousewheel(self, event):
         if self.canvas.winfo_containing(event.x_root, event.y_root):
-            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+            self.scroll_delta += event.delta
+            if not self.scroll_update_scheduled:
+                self.scroll_update_scheduled = True
+                self.root.after_idle(self._update_scroll)
+
+    def _update_scroll(self):
+        self.canvas.yview_scroll(int(-1 * (self.scroll_delta / 120)), "units")
+        self.canvas.update_idletasks()
+        self.scroll_update_scheduled = False
+        self.scroll_delta = 0
 
     def log(self, message):
         current_time = time.strftime("%Y-%m-%d %H:%M:%S")
